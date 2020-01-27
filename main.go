@@ -1,6 +1,6 @@
 /*
 	ESScriptGO - A golang implementation of Extrasklep's scripting language (https://github.com/extrasklep/lang)
-	Copyright (C) 2019 Rph
+	Copyright (C) 2019, 2020 Rph
 
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to deal
@@ -19,6 +19,9 @@
 	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 	SOFTWARE.
+	
+	Changelog: v1.0.1
+		- Fixed comments
  */
 
 
@@ -263,9 +266,15 @@ func resolveNumberFromNest(nest string) int64 {
 	for i := len(tokens) - 1; i >= 0; i-- {
 		t := tokens[i]
 		if t == "c" {
+			if lastNumber < 0 || lastNumber > cvars - 1 {
+				log.Panic("NESTED VALUE PARSER: UNCLAMPED ACCESS!")
+			}
 			lastNumber = int64(memCVar[lastNumber])
 		}
 		if t == "v" {
+			if lastNumber < 0 || lastNumber > vars - 1 {
+				log.Panic("NESTED VALUE PARSER: UNCLAMPED ACCESS!")
+			}
 			lastNumber = memVar[lastNumber]
 		}
 	}
@@ -291,7 +300,7 @@ func readInput(side SideType, param int64, nest string, lineNum int64) int64 {
 		}
 		return int64(memCVar[param])
 	case SideCharacter:
-		return int64(param)
+		return param
 	case SideNumber:
 		return param
 	case SideLineNumber:
@@ -344,8 +353,8 @@ func execute(parsedLines []Line) {
 	dbgLog("Beginning execution")
 
 	for {
-		if currentLine >= int64(len(parsedLines)) {
-			dbgLog("exit: Ran out of lines")
+		if currentLine >= int64(len(parsedLines)) || currentLine < 1{
+			dbgLog("exit: Ran out of lines or line underflow")
 			break
 		}
 		normalJump := true
@@ -465,9 +474,14 @@ func main() {
 		command := ""
 		rightSide := ""
 
-		for cIndex, character := range chars {
+		for _, character := range chars {
 			// Start of line comments
-			if character == "/" && previousChar == "/" && cIndex == 1 {
+			if character == "/" && previousChar == "/" {
+				dbgLog("comment, break")
+				if currentSide != 2 {
+					thisLine.hasCode = false
+					dbgLog("premature comment")
+				}
 				break
 			}
 
@@ -494,6 +508,8 @@ func main() {
 					leftSide = leftSide + character
 				}
 			}
+
+			previousChar = character
 		}
 
 		// Step 3: Detect command type
@@ -512,7 +528,7 @@ func main() {
 			case "/":
 				thisLine.sign = SignDivide
 			default:
-				log.Panic("Invalid command! (line: ", thisLine.lineNum, ", command: ", command, " )")
+				log.Panic("Invalid command! (line: ", thisLine.lineNum + 1, ", command: ", command, " )")
 			}
 		}
 
@@ -520,7 +536,7 @@ func main() {
 			// Step 4: Parse left side
 			lside, lmeta, isNested := parseSide(leftSide, thisLine.lineNum, 0)
 			if !isInput(lside) {
-				log.Panic("Line: ", thisLine.lineNum, " left side, input expected, got output only datatype.")
+				log.Panic("Line: ", thisLine.lineNum + 1, " left side, input expected, got output only datatype.")
 			}
 
 			thisLine.left = lside
@@ -534,18 +550,18 @@ func main() {
 			rside, rmeta, isNested := parseSide(rightSide, thisLine.lineNum, 0)
 			if thisLine.sign == SignIf {
 				if !isInput(rside) {
-					log.Panic("Line: ", thisLine.lineNum, " right side, input expected, got output only datatype.")
+					log.Panic("Line: ", thisLine.lineNum + 1, " right side, input expected, got output only datatype.")
 				}
 			} else {
 				if thisLine.sign == SignAdd || thisLine.sign == SignSubtract || thisLine.sign == SignMultiply || thisLine.sign == SignDivide {
 					if isOutput(rside) && isInput(rside) {
 
 					} else {
-						log.Panic("Line: ", thisLine.lineNum, " right side, input AND output expected, got only one.")
+						log.Panic("Line: ", thisLine.lineNum + 1, " right side, input AND output expected, got only one.")
 					}
 				} else {
 					if !isOutput(rside) {
-						log.Panic("Line: ", thisLine.lineNum, " right side, output expected, got input only datatype.")
+						log.Panic("Line: ", thisLine.lineNum + 1, " right side, output expected, got input only datatype.")
 					}
 				}
 			}
