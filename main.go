@@ -1,6 +1,6 @@
 /*
 	ESScriptGO - A golang implementation of Extrasklep's scripting language (https://github.com/extrasklep/lang)
-	Copyright (C) 2019, 2020 Rph
+	Copyright (C) 2019 Rph
 
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to deal
@@ -20,8 +20,10 @@
 	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 	SOFTWARE.
 	
-	Changelog: v1.0.1
-		- Fixed comments
+	Changelog: v1.0.2:
+	Changes since 1.0:
+		-fix comments
+		- fix line numbering underflow error
  */
 
 
@@ -353,7 +355,7 @@ func execute(parsedLines []Line) {
 	dbgLog("Beginning execution")
 
 	for {
-		if currentLine >= int64(len(parsedLines)) || currentLine < 1{
+		if currentLine >= int64(len(parsedLines)) || currentLine < 0 {
 			dbgLog("exit: Ran out of lines or line underflow")
 			break
 		}
@@ -576,6 +578,8 @@ func main() {
 		parsedLines[index] = thisLine
 		parsedLines[index].lineNum = parsedLines[index].lineNum + 1
 	}
+
+	fmt.Println(parsedLines)
 
 	execute(parsedLines)
 }
